@@ -1,0 +1,157 @@
+// Implements a dictionary's functionality
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+#include <strings.h>
+#include <stdlib.h>
+#include <ctype.h>
+#include "dictionary.h"
+
+// Represents a node in a hash table
+typedef struct node
+{
+    char word[LENGTH + 1];
+    struct node *next;
+}
+node;
+
+// Number of buckets in hash table
+const unsigned int N = 65536;
+
+// Hash table
+node *table[N];
+
+//counter for number of words in the dictionary
+int words_dictionary = 0;
+
+// Returns true if word is in dictionary else false
+bool check(const char *word)
+{
+    //convert the word to lower case because I don't want to worry about lower or upper cases
+    int width = strlen(word);
+    char lower_word[width + 1];
+    for (int i = 0; i < width; i++)
+    {
+        lower_word[i] = tolower(word[i]);
+    }
+    lower_word[width] = '\0';
+    
+    // if the word is in the dictionary
+    int index1 = hash(lower_word);
+    
+    //search for the word to compare both
+    if (table[index1] == NULL)
+    {
+        return false;
+    }
+    else
+    {
+        //look for every linked list, if we find the same word, return true
+        for (node *cursor = table[index1]; cursor != NULL; cursor = cursor->next)
+        {
+            if(strcasecmp(lower_word, cursor->word) == 0)    
+            {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
+
+// Hashes word to a number
+unsigned int hash(const char *word)
+{
+    // Hash function
+    unsigned int hash = 0;
+    for (int i = 0, n = strlen(word); i < n; i++)
+    {
+        hash = (hash << 2) ^ word[i];
+        return hash % N;
+    }
+  
+    return false;      
+}
+
+// Loads dictionary into memory, returning true if successful else false
+bool load(const char *dictionary)
+{
+    // open dictionary to read it
+    FILE *temp = fopen(dictionary, "r");
+    if (temp == NULL)
+    {
+        fprintf(stderr, "Could not open %s.\n", dictionary);
+        return false;
+    }
+    
+    // iteration until we reach the last word 
+    char word_found[LENGTH + 1];
+    while(fscanf(temp, "%s", word_found) == 1)
+    {
+        //here I create the space required for every node
+        node *n = malloc(sizeof(node));
+        if (n == NULL)
+        {
+            printf("Not enough memory.\n");
+            return false;
+        }
+        //node string value
+        strcpy(n->word, word_found);
+        
+        //we must initialize every node to prevent problems with free() 
+        n->next = NULL;
+        
+        //count the word added
+        words_dictionary += 1;
+        
+        //use hash function
+        int index = hash(n->word);
+    
+        //now we create the linked list
+        
+        // if the table does not have an node
+        if (table[index] == NULL)
+        {
+            table[index] = n;  
+        }
+            
+        // else append the new node to the beginning of the link list
+        else
+        {
+            n->next = table[index];
+            table[index] = n;
+        }
+    }
+    
+    fclose(temp);
+    
+    return true;
+}
+
+// Returns number of words in dictionary if loaded else 0 if not yet loaded
+unsigned int size(void)
+{
+    // number of words in the dictionary
+    return words_dictionary;
+}
+
+// Unloads dictionary from memory, returning true if successful else false
+bool unload(void)
+{
+    // free memory
+    for(int i = 0; i < N; i++)
+    {
+        node *index = table[i];
+        node *cursor = index;
+        node *temp = index;
+        
+        while(cursor != NULL)
+        {
+            cursor = cursor->next;
+            free(temp);
+            temp=cursor;
+        }
+    }
+    
+    return true;
+}
